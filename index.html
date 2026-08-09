@@ -11,7 +11,7 @@
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Mencegah guncangan scroll/zoom bawaan HP saat menyentuh canvas */
+            touch-action: none;
         }
 
         body {
@@ -31,7 +31,6 @@
             z-index: 1;
         }
 
-        /* Branding Overlay - Dibuat responsif untuk HP */
         .branding-container {
             position: absolute;
             bottom: 6%;
@@ -97,7 +96,6 @@
             pointer-events: none;
         }
 
-        /* Responsivitas Layar Desktop / Tablet */
         @media (min-width: 768px) {
             .instruction {
                 font-size: 0.85rem;
@@ -149,7 +147,6 @@
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         let particles = [];
-        // Mengatur radius interaksi awal berdasarkan lebar layar (lebih kecil di HP)
         let isMobile = window.innerWidth < 768;
         let mouse = { 
             x: null, 
@@ -167,7 +164,6 @@
             setupParticles();
         }
 
-        // Debounce resize event agar HP tidak lag saat rotasi layar
         let resizeTimeout;
         window.addEventListener('resize', function() {
             clearTimeout(resizeTimeout);
@@ -184,7 +180,6 @@
             mouse.y = null;
         });
 
-        // Touch support yang lebih presisi untuk layar sentuh HP
         window.addEventListener('touchmove', function(event) {
             if(event.touches.length > 0) {
                 mouse.x = event.touches[0].clientX;
@@ -198,19 +193,21 @@
         });
 
         class Particle {
-            constructor(x, y, targetX, targetY) {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.targetX = targetX;
-                this.targetY = targetY;
-                // Ukuran partikel disesuaikan agar tetap terlihat tajam di HP
-                this.size = isMobile ? (Math.random() * 1.5 + 1.2) : (Math.random() * 2 + 1.5);
-                this.baseX = targetX;
-                this.baseY = targetY;
+            constructor(x, y) {
+                // Partikel langsung ke posisi tujuan (menghilangkan bug freeze pojok atas)
+                this.x = x;
+                this.y = y;
+                this.baseX = x;
+                this.baseY = y;
+                
+                // DESKTOP: Kembali ke formula asli (Math.random() * 2 + 1.5)
+                // MOBILE: Disesuaikan rapat
+                this.size = isMobile ? (Math.random() * 1.0 + 1.2) : (Math.random() * 2 + 1.5);
                 this.density = (Math.random() * 25) + 15;
             }
 
             draw() {
+                // DESKTOP: Kembali ke opacity asli 0.85
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -250,34 +247,38 @@
 
         function setupParticles() {
             particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = 'white';
             
-            // Ukuran font adaptif yang lebih proporsional di layar vertikal HP
-            let fontSize = isMobile ? Math.min(canvas.width * 0.065, 24) : Math.min(canvas.width * 0.045, 52); 
+            // DESKTOP: Kembali 100% ke perhitungan asli Anda
+            let fontSize = isMobile ? Math.min(canvas.width * 0.07, 28) : Math.min(canvas.width * 0.045, 52); 
             ctx.font = `900 ${fontSize}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
             let text = "aregularCorp website is under construction";
             
-            // Jika layar terlalu sempit (HP Potret), pecah teks menjadi dua baris agar tidak kepotong
-            if (isMobile && canvas.width < 480) {
-                ctx.fillText("aregularCorp website", canvas.width / 2, canvas.height / 2.5 - 15);
-                ctx.fillText("is under construction", canvas.width / 2, canvas.height / 2.5 + 15);
+            if (isMobile && canvas.width < 500) {
+                let lineHeight = fontSize * 1.3;
+                ctx.fillText("aregularCorp", canvas.width / 2, canvas.height / 2.5 - lineHeight);
+                ctx.fillText("website is under", canvas.width / 2, canvas.height / 2.5);
+                ctx.fillText("construction", canvas.width / 2, canvas.height / 2.5 + lineHeight);
             } else {
+                // DESKTOP: Persis kodingan awal
                 ctx.fillText(text, canvas.width / 2, canvas.height / 2.3);
             }
 
             const textCoordinates = ctx.getImageData(0, 0, canvas.width, canvas.height);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Jarak pemindaian titik (step) disesuaikan agar performa render di HP tetap mulus (60fps)
-            const step = isMobile ? 4 : Math.max(4, Math.floor(canvas.width / 350)); 
+            // DESKTOP step: Kembali 100% ke rumus awal Math.max(4, Math.floor(canvas.width / 350))
+            // MOBILE step: 2 agar titik rapat
+            const step = isMobile ? 2 : Math.max(4, Math.floor(canvas.width / 350)); 
 
             for (let y = 0; y < textCoordinates.height; y += step) {
                 for (let x = 0; x < textCoordinates.width; x += step) {
                     if (textCoordinates.data[(y * 4 * textCoordinates.width) + (x * 4) + 3] > 128) {
-                        particles.push(new Particle(x, y, x, y));
+                        particles.push(new Particle(x, y));
                     }
                 }
             }
